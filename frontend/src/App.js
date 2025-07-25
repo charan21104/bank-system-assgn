@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css'; // Make sure this line is here
 
 // --- Configuration ---
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE_URL = 'https://bank-lending-backend-charan.onrender.com';
 
 // --- Helper Components ---
 const Spinner = () => (
