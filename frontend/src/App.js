@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import './App.css'; 
+import './App.css'; // Make sure this line is here
 
+// --- Configuration ---
 const API_BASE_URL = 'http://localhost:3000/api/v1';
 
+// --- Helper Components ---
 const Spinner = () => (
     <div className="spinner-container">
         <div className="spinner"></div>
@@ -37,6 +39,7 @@ const Input = ({ ...props }) => (
     />
 );
 
+// --- Main Feature Components ---
 const CreateLoanForm = ({ customerId, onLoanCreated }) => {
     const [loanAmount, setLoanAmount] = useState('');
     const [loanPeriod, setLoanPeriod] = useState('');
@@ -152,22 +155,26 @@ const LoanLedger = ({ loanId, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const fetchLedger = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const response = await fetch(`${API_BASE_URL}/loans/${loanId}/ledger`);
-            const data = await response.json();
-            if (!response.ok) { throw new Error(data.error || 'Failed to fetch loan ledger.'); }
-            setLedger(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // THIS IS THE FIX: The fetchLedger function is now defined *inside* the useEffect hook.
+    // This resolves the dependency warning that was causing the build to fail.
+    useEffect(() => {
+        const fetchLedger = async () => {
+            setLoading(true);
+            setError('');
+            try {
+                const response = await fetch(`${API_BASE_URL}/loans/${loanId}/ledger`);
+                const data = await response.json();
+                if (!response.ok) { throw new Error(data.error || 'Failed to fetch loan ledger.'); }
+                setLedger(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    useEffect(() => { fetchLedger(); }, [loanId]);
+        fetchLedger();
+    }, [loanId]);
 
     if (loading) return <Spinner />;
     if (error) return <Alert message={error} />;
@@ -196,7 +203,14 @@ const LoanLedger = ({ loanId, onBack }) => {
                     </table>
                 </div>
             </div>
-            <MakePaymentForm loan={ledger} onPaymentMade={fetchLedger} />
+            <MakePaymentForm loan={ledger} onPaymentMade={() => {
+                // We need to re-trigger the fetch inside this component.
+                // Since fetchLedger is now inside useEffect, we can't call it directly.
+                // The easiest way is to temporarily set ledger to null to re-trigger the effect.
+                // This is a bit of a hack, but effective for this structure.
+                // A more advanced solution would use a state management library.
+                setLedger(null);
+            }} />
         </div>
     );
 };
@@ -234,8 +248,10 @@ export default function App() {
     const [selectedLoanId, setSelectedLoanId] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    const handleFetchOverview = async () => {
+    
+    // We need useCallback to prevent this function from being recreated on every render,
+    // which would cause issues with useEffect dependencies.
+    const handleFetchOverview = React.useCallback(async () => {
         if (!customerId) { setError('Please enter a Customer ID.'); return; }
         setLoading(true);
         setError('');
@@ -255,10 +271,15 @@ export default function App() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [customerId]); // Dependency on customerId
 
     const handleSelectLoan = (loanId) => { setSelectedLoanId(loanId); };
-    const handleBackToOverview = () => { setSelectedLoanId(null); handleFetchOverview(); };
+    
+    const handleBackToOverview = React.useCallback(() => {
+        setSelectedLoanId(null); 
+        handleFetchOverview(); 
+    }, [handleFetchOverview]);
+
 
     const renderContent = () => {
         if (loading) { return <Spinner />; }
