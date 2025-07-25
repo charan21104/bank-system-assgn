@@ -1,0 +1,16 @@
+# Dependencies
+/node_modules
+
+# Database files
+*.db
+
+# Build folder
+/frontend/build
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS specific
+.DS_Store
